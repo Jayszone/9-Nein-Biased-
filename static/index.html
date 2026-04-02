@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>9 (Nein) Biased — Intelligence Briefing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080f;
+      --surface: #0d0f1a;
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(220,38,38,0.4);
+      --red: #dc2626;
+      --gold: #c9a84c;
+      --text: #e8eaf0;
+      --muted: #5a6070;
+      --dim: #2a2d3a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Radial glow behind content */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80vw;
+      height: 60vh;
+      background: radial-gradient(ellipse, rgba(180,20,20,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .serif { font-family: 'Playfair Display', Georgia, serif; }
+    .mono  { font-family: 'IBM Plex Mono', monospace; }
+
+    /* Noise grain overlay */
+    .grain::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      border-radius: inherit;
+    }
+
+    /* Nav */
+    .nav-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(7,8,15,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .nav-logo span { color: var(--red); }
+
+    /* Red rule divider */
+    .red-rule {
+      width: 32px;
+      height: 2px;
+      background: var(--red);
+      display: inline-block;
+    }
+
+    /* Ticker bar */
+    .ticker {
+      background: var(--red);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .ticker-inner {
+      display: inline-block;
+      animation: ticker 40s linear infinite;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: #fff;
+      padding: 5px 0;
+    }
+    @keyframes ticker {
+      from { transform: translateX(100vw); }
+      to   { transform: translateX(-100%); }
+    }
+
+    /* Story card */
+    .story-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .story-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--red);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .story-card:hover {
+      border-color: rgba(220,38,38,0.3);
+      transform: translateY(-1px);
+    }
+    .story-card:hover::before { opacity: 1; }
+
+    /* Story number badge */
+    .story-badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--red);
+      text-transform: uppercase;
+    }
+
+    /* Tag chips */
+    .tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 1px;
+    }
+    .tag-left   { background: rgba(59,130,246,0.1);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+    .tag-center { background: rgba(100,116,139,0.1); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+    .tag-right  { background: rgba(220,38,38,0.1);   color: #f87171; border: 1px solid rgba(220,38,38,0.2); }
+
+    /* Bias bar */
+    .bias-track {
+      height: 3px;
+      background: var(--dim);
+      border-radius: 0;
+      overflow: hidden;
+      display: flex;
+    }
+    .bias-left   { background: #3b82f6; transition: width 0.8s ease; }
+    .bias-center { background: #64748b; transition: width 0.8s ease; }
+    .bias-right  { background: var(--red); transition: width 0.8s ease; }
+
+    /* Drawer */
+    .drawer {
+      position: fixed;
+      top: 0; right: 0;
+      height: 100%;
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      z-index: 60;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      border-left: 1px solid var(--border);
+    }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(3px);
+      z-index: 55;
+      display: none;
+    }
+    .drawer-overlay.open { display: block; }
+
+    /* Section label */
+    .section-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Factual core block */
+    .fact-block {
+      border-left: 2px solid #22c55e;
+      background: rgba(34,197,94,0.04);
+      padding: 16px 20px;
+    }
+
+    /* Framing block */
+    .framing-block {
+      border-left: 2px solid var(--gold);
+      background: rgba(201,168,76,0.04);
+      padding: 16px 20px;
+    }
+
+    /* Run button */
+    .run-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .run-btn:hover { background: #b91c1c; }
+    .run-btn:disabled { background: #2a2d3a; color: var(--muted); cursor: not-allowed; }
+
+    /* Pulse dot */
+    .pulse-dot {
+      width: 8px; height: 8px;
+      background: #f59e0b;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform: scale(1); }
+      50%      { opacity:0.4; transform: scale(0.8); }
+    }
+
+    /* Score bar */
+    .score-bar {
+      height: 2px;
+      background: linear-gradient(to right, var(--red), #f59e0b, #22c55e);
+      border-radius: 1px;
+    }
+
+    /* Source row */
+    .source-row {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+    }
+    .source-row:last-child { border-bottom: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--dim); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="nav-bar">
+    <div style="max-width:1100px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1">
+      <div style="display:flex;align-items:center;gap:20px">
+        <div class="nav-logo">9 <span>(Nein)</span> Biased</div>
+        <div style="width:1px;height:20px;background:var(--border)"></div>
+        <div class="mono" style="font-size:0.6rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase">Intelligence Briefing</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span id="last-updated" class="mono" style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em"></span>
+        <button id="run-btn" class="run-btn" onclick="triggerRun()">▶ Run Pipeline</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- TICKER -->
+  <div class="ticker" style="position:relative;z-index:1">
+    <div class="ticker-inner" id="ticker-text">
+      BIAS ANALYSIS &nbsp;·&nbsp; SEE ALL SIDES &nbsp;·&nbsp; KNOW THE FACTS &nbsp;·&nbsp; LEFT &nbsp;·&nbsp; CENTER &nbsp;·&nbsp; RIGHT &nbsp;·&nbsp; FACTUAL CORE &nbsp;·&nbsp; FRAMING CONTRAST &nbsp;·&nbsp; MEDIA INTELLIGENCE &nbsp;·&nbsp; 9 (NEIN) BIASED &nbsp;·&nbsp; BIAS ANALYSIS &nbsp;·&nbsp; SEE ALL SIDES &nbsp;·&nbsp; KNOW THE FACTS &nbsp;·&nbsp;
+    </div>
+  </div>
+
+  <!-- HEADER BAR -->
+  <div style="position:relative;z-index:1;border-bottom:1px solid var(--border);background:rgba(13,15,26,0.6)">
+    <div style="max-width:1100px;margin:0 auto;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="serif" style="font-size:1.8rem;font-weight:900;line-height:1;letter-spacing:-0.02em" id="date-heading">Today's Briefing</div>
+        <div class="mono" style="font-size:0.65rem;color:var(--muted);margin-top:6px;letter-spacing:0.1em">MEDIA BIAS · FACTUAL ANALYSIS · FRAMING INTELLIGENCE</div>
+      </div>
+      <div style="display:flex;gap:20px">
+        <div style="text-align:center">
+          <div class="mono" style="font-size:1.2rem;font-weight:500;color:var(--text)" id="stat-sources">—</div>
+          <div class="mono" style="font-size:0.55rem;color:var(--muted);letter-spacing:0.1em;margin-top:2px">SOURCES</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div class="mono" style="font-size:1.2rem;font-weight:500;color:var(--text)" id="stat-stories">—</div>
+          <div class="mono" style="font-size:0.55rem;color:var(--muted);letter-spacing:0.1em;margin-top:2px">STORIES</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div class="mono" style="font-size:1.2rem;font-weight:500;color:#22c55e" id="stat-facts">—</div>
+          <div class="mono" style="font-size:0.55rem;color:var(--muted);letter-spacing:0.1em;margin-top:2px">VERIFIED FACTS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BANNER -->
+  <div id="status-banner" style="display:none;position:relative;z-index:1;background:rgba(245,158,11,0.06);border-bottom:1px solid rgba(245,158,11,0.2);padding:12px 24px">
+    <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px">
+      <div class="pulse-dot"></div>
+      <span class="mono" style="font-size:0.65rem;letter-spacing:0.08em;color:#f59e0b">PIPELINE RUNNING — ANALYZING TODAY'S INTELLIGENCE...</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main style="max-width:1100px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+
+    <div id="stories-grid">
+      <div class="empty-state">
+        <div class="mono" style="font-size:0.7rem;letter-spacing:0.15em;margin-bottom:16px;color:var(--muted)">NO INTELLIGENCE AVAILABLE</div>
+        <div class="serif" style="font-size:1.4rem;color:var(--text);margin-bottom:8px">Ready for your briefing.</div>
+        <div style="font-size:0.8rem;color:var(--muted)">Hit <strong style="color:var(--red)">▶ Run Pipeline</strong> to analyze today's news.</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- DRAWER OVERLAY -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+  <!-- DRAWER -->
+  <div class="drawer" id="drawer">
+    <div style="position:sticky;top:0;background:rgba(13,15,26,0.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;z-index:10">
+      <div class="mono" style="font-size:0.6rem;letter-spacing:0.15em;color:var(--muted)">STORY INTELLIGENCE</div>
+      <button onclick="closeDrawer()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:4px">✕</button>
+    </div>
+    <div id="drawer-content" style="padding:28px 24px"></div>
+  </div>
+
+<script>
+  let pollingInterval = null;
+  let currentRunId = null;
+
+  // Set date
+  const now = new Date();
+  document.getElementById('date-heading').textContent =
+    now.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+
+  async function loadStories() {
+    const res = await fetch('/api/stories?limit=9');
+    const stories = await res.json();
+    renderGrid(stories);
+    if (stories.length) {
+      const totalSources = stories.reduce((a,s) => a + (s.article_scores||[]).length, 0);
+      const totalFacts   = stories.reduce((a,s) => a + (s.factual_core||[]).length, 0);
+      document.getElementById('stat-sources').textContent = totalSources;
+      document.getElementById('stat-stories').textContent = stories.length;
+      document.getElementById('stat-facts').textContent   = totalFacts;
+      const d = new Date(stories[0].run_date + 'Z');
+      document.getElementById('last-updated').textContent =
+        'Last run: ' + d.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'});
+    }
+  }
+
+  function renderGrid(stories) {
+    const grid = document.getElementById('stories-grid');
+    if (!stories.length) return;
+    grid.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px;background:var(--border)">
+        ${stories.map((s,i) => storyCard(s, i+1)).join('')}
+      </div>`;
+  }
+
+  function storyCard(s, num) {
+    const scores = s.article_scores || [];
+    const left   = scores.filter(a => a.source_bias==='left').length;
+    const center = scores.filter(a => a.source_bias==='center').length;
+    const right  = scores.filter(a => a.source_bias==='right').length;
+    const total  = scores.length || 1;
+    const avgScore = scores.length ? scores.reduce((a,b)=>a+b.opinion_vs_analysis_score,0)/scores.length : 0.5;
+    const scoreLabel = avgScore>=0.7?'ANALYTICAL':avgScore>=0.4?'MIXED':'OPINION-HEAVY';
+    const scoreColor = avgScore>=0.7?'#22c55e':avgScore>=0.4?'#f59e0b':'#ef4444';
+    const facts = (s.factual_core||[]).slice(0,2);
+
+    const imgHtml = s.image_url
+      ? `<div style="height:160px;overflow:hidden;margin:-0px">
+           <img src="${escHtml(s.image_url)}" alt=""
+             style="width:100%;height:160px;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.8)"
+             onerror="this.parentElement.innerHTML=fallbackSvg(${s.id})">
+         </div>`
+      : `<div style="height:160px;overflow:hidden">${fallbackSvg(s.id, s.headline)}</div>`;
+
+    return `
+    <div class="story-card" onclick="openStory(${s.id})" style="background:var(--surface)">
+      ${imgHtml}
+      <div style="padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span class="story-badge">STORY ${num.toString().padStart(2,'0')}</span>
+          <span class="mono" style="font-size:0.6rem;letter-spacing:0.1em;color:${scoreColor}">${scoreLabel}</span>
+        </div>
+
+        <h2 class="serif" style="font-size:1.1rem;font-weight:700;line-height:1.4;color:var(--text);margin-bottom:16px">${escHtml(s.headline)}</h2>
+
+      <div style="margin-bottom:14px">
+        <div class="bias-track" style="margin-bottom:6px">
+          <div class="bias-left"  style="width:${(left/total*100).toFixed(1)}%"></div>
+          <div class="bias-center"style="width:${(center/total*100).toFixed(1)}%"></div>
+          <div class="bias-right" style="width:${(right/total*100).toFixed(1)}%"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          ${left   ? `<span class="mono" style="font-size:0.55rem;color:#60a5fa">${left}L</span>` : ''}
+          ${center ? `<span class="mono" style="font-size:0.55rem;color:#94a3b8">${center}C</span>` : ''}
+          ${right  ? `<span class="mono" style="font-size:0.55rem;color:#f87171">${right}R</span>` : ''}
+          <span class="mono" style="font-size:0.55rem;color:var(--muted);margin-left:auto">${total} SOURCES</span>
+        </div>
+      </div>
+
+        ${facts.length ? `
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+          <div class="mono" style="font-size:0.55rem;color:#22c55e;letter-spacing:0.12em;margin-bottom:8px">✓ SHARED FACTS</div>
+          ${facts.map(f=>`<div style="font-size:0.75rem;color:var(--muted);line-height:1.5;margin-bottom:4px;padding-left:10px;border-left:1px solid var(--dim)">
+            ${escHtml(f)}</div>`).join('')}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  async function openStory(id) {
+    const res = await fetch(`/api/stories/${id}`);
+    const s = await res.json();
+    renderDrawer(s);
+    document.getElementById('drawer-overlay').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => renderScatterPlot(s.article_scores||[]), 150);
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawer-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function renderDrawer(s) {
+    const scores = s.article_scores || [];
+    const facts  = s.factual_core   || [];
+    const d = new Date(s.run_date + 'Z');
+
+    document.getElementById('drawer-content').innerHTML = `
+      <div class="mono" style="font-size:0.6rem;color:var(--muted);letter-spacing:0.12em;margin-bottom:12px">
+        ${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}).toUpperCase()}
+      </div>
+
+      <h1 class="serif" style="font-size:1.6rem;font-weight:900;line-height:1.3;margin-bottom:28px;color:var(--text)">${escHtml(s.headline)}</h1>
+
+      <!-- Scatter plot -->
+      <div style="background:#090a12;border:1px solid var(--border);padding:20px;margin-bottom:24px">
+        <div class="section-label" style="margin-bottom:16px">Coverage Map</div>
+        <div style="position:relative;height:220px"><canvas id="scatter-chart"></canvas></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;padding:0 4px">
+          <span class="mono" style="font-size:0.55rem;color:#60a5fa">◀ LEFT</span>
+          <span class="mono" style="font-size:0.55rem;color:#94a3b8">CENTER</span>
+          <span class="mono" style="font-size:0.55rem;color:#f87171">RIGHT ▶</span>
+        </div>
+      </div>
+
+      <!-- Factual Core -->
+      <div class="fact-block" style="margin-bottom:16px">
+        <div class="section-label" style="color:#22c55e;margin-bottom:12px">✓ Shared Factual Core</div>
+        ${facts.map(f=>`
+          <div style="display:flex;gap:10px;margin-bottom:10px;font-size:0.82rem;line-height:1.6;color:#cbd5e1">
+            <span style="color:#22c55e;font-weight:700;flex-shrink:0">·</span>${escHtml(f)}
+          </div>`).join('')}
+      </div>
+
+      <!-- Framing Contrast -->
+      <div class="framing-block" style="margin-bottom:24px">
+        <div class="section-label" style="color:var(--gold);margin-bottom:10px">↔ Framing Contrast</div>
+        <p style="font-size:0.82rem;line-height:1.7;color:#cbd5e1;font-style:italic;margin:0">${escHtml(s.framing_contrast)}</p>
+      </div>
+
+      <!-- Source breakdown -->
+      <div>
+        <div class="section-label" style="margin-bottom:14px">Source Breakdown</div>
+        ${scores.map(a => sourceRow(a)).join('')}
+      </div>
+    `;
+  }
+
+  function sourceRow(a) {
+    const bias = a.source_bias || 'center';
+    const score = a.opinion_vs_analysis_score || 0.5;
+    const pct = Math.round(score * 100);
+    const tagClass = {left:'tag-left',center:'tag-center',right:'tag-right'}[bias]||'tag-center';
+    const scoreColor = score>=0.7?'#22c55e':score>=0.4?'#f59e0b':'#ef4444';
+    const scoreLabel = score>=0.75?'Analytical':score>=0.5?'Mostly Analytical':score>=0.25?'Mostly Opinion':'Opinion';
+
+    return `
+    <div class="source-row">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="tag ${tagClass}">${bias.toUpperCase()}</span>
+          <span style="font-size:0.82rem;font-weight:600;color:var(--text)">${escHtml(a.source_name||'')}</span>
+        </div>
+        <span class="mono" style="font-size:0.6rem;color:${scoreColor}">${scoreLabel} · ${pct}%</span>
+      </div>
+      <div class="score-bar" style="width:${pct}%;height:2px;margin-bottom:6px"></div>
+      <p style="font-size:0.72rem;color:var(--muted);font-style:italic;margin:0">${escHtml(a.score_reasoning||'')}</p>
+    </div>`;
+  }
+
+  function renderScatterPlot(scores) {
+    const canvas = document.getElementById('scatter-chart');
+    if (!canvas) return;
+    const biasX = { left:-1, center:0, right:1 };
+    const colors = { left:'rgba(96,165,250,0.9)', center:'rgba(148,163,184,0.9)', right:'rgba(248,113,113,0.9)' };
+
+    new Chart(canvas.getContext('2d'), {
+      type: 'scatter',
+      data: {
+        datasets: scores.map(a => ({
+          label: a.source_name,
+          data: [{ x: biasX[a.source_bias]??0, y: a.opinion_vs_analysis_score??0.5 }],
+          backgroundColor: colors[a.source_bias]||colors.center,
+          pointRadius: 7, pointHoverRadius: 10,
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0d0f1a', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleColor: '#e8eaf0', bodyColor: '#94a3b8',
+            callbacks: { label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y*100)}% analytical` }
+          }
+        },
+        scales: {
+          x: {
+            min:-1.5, max:1.5,
+            grid: { color:'rgba(255,255,255,0.04)' },
+            ticks: { color:'#3a3d4a', callback: v => ({'-1':'Left','0':'Center','1':'Right'}[v]??''), stepSize:1 },
+            border: { color:'rgba(255,255,255,0.06)' }
+          },
+          y: {
+            min:0, max:1,
+            grid: { color:'rgba(255,255,255,0.04)' },
+            ticks: { color:'#3a3d4a', callback: v => v===0?'Opinion':v===1?'Analytical':'', stepSize:0.5 },
+            border: { color:'rgba(255,255,255,0.06)' }
+          }
+        }
+      }
+    });
+  }
+
+  async function triggerRun() {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = true;
+    btn.textContent = '● RUNNING';
+    document.getElementById('status-banner').style.display = 'block';
+    const res = await fetch('/api/run', { method:'POST' });
+    const data = await res.json();
+    currentRunId = data.run_id;
+    pollingInterval = setInterval(pollStatus, 3000);
+  }
+
+  async function pollStatus() {
+    if (!currentRunId) return;
+    const res = await fetch(`/api/runs/${currentRunId}/status`);
+    const data = await res.json();
+    if (data.status === 'done') {
+      clearInterval(pollingInterval);
+      document.getElementById('status-banner').style.display = 'none';
+      resetRunBtn();
+      await loadStories();
+    } else if (data.status === 'error') {
+      clearInterval(pollingInterval);
+      document.getElementById('status-banner').innerHTML = `
+        <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px">
+          <span class="mono" style="font-size:0.65rem;color:#ef4444;letter-spacing:0.08em">Pipeline failed: ${escHtml(data.error||'Unknown error')}</span>
+        </div>`;
+      resetRunBtn();
+    }
+  }
+
+  function resetRunBtn() {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = false;
+    btn.textContent = '▶ Run Pipeline';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fallbackSvg(id, headline='') {
+    // Generate a unique abstract gradient from the story id/headline
+    const seed = (id * 137 + headline.charCodeAt(0||0)) % 360;
+    const h1 = seed, h2 = (seed + 40) % 360, h3 = (seed + 80) % 360;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="160" viewBox="0 0 600 160">
+      <defs>
+        <linearGradient id="g${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="hsl(${h1},40%,10%)"/>
+          <stop offset="50%"  stop-color="hsl(${h2},35%,14%)"/>
+          <stop offset="100%" stop-color="hsl(${h3},30%,8%)"/>
+        </linearGradient>
+        <filter id="noise${id}">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+          <feColorMatrix type="saturate" values="0"/>
+          <feBlend in="SourceGraphic" mode="overlay"/>
+        </filter>
+      </defs>
+      <rect width="600" height="160" fill="url(#g${id})"/>
+      <rect width="600" height="160" filter="url(#noise${id})" opacity="0.08"/>
+      <line x1="0" y1="80" x2="600" y2="80" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <line x1="300" y1="0" x2="300" y2="160" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <circle cx="${100 + (seed % 200)}" cy="${40 + (seed % 60)}" r="${30 + (seed%20)}" fill="hsl(${h1},50%,20%)" opacity="0.3"/>
+      <circle cx="${350 + (seed % 150)}" cy="${80 + (seed % 50)}" r="${20 + (seed%30)}" fill="hsl(${h2},50%,25%)" opacity="0.2"/>
+      <rect x="24" y="120" width="${40 + (seed%30)}" height="2" fill="hsl(${h1},60%,50%)" opacity="0.6"/>
+    </svg>`;
+    return svg;
+  }
+
+  loadStories();
+</script>
+</body>
+</html>
