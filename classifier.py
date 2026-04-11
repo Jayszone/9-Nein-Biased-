@@ -73,6 +73,13 @@ def call_claude(prompt, system=None, max_tokens=8192):
     response = requests.post(OPENROUTER_API_URL, headers=headers, json=body)
     response.raise_for_status()
     data = response.json()
+
+    if "error" in data:
+        raise ValueError(f"OpenRouter error: {data['error']}")
+
+    if "choices" not in data or not data["choices"]:
+        raise ValueError(f"No choices in response. Full response: {data}")
+
     message = data["choices"][0]["message"]
     content = message.get("content") or message.get("reasoning") or ""
     if not content:
@@ -82,6 +89,9 @@ def call_claude(prompt, system=None, max_tokens=8192):
 
 def cluster_top_stories(articles, n=3):
     """Use AI to identify the top N stories and group articles by story."""
+    # Cap at 45 articles to stay within model context limits
+    articles = articles[:45]
+
     # Build a compact article list for the prompt
     article_list = []
     for i, a in enumerate(articles):
