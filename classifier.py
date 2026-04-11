@@ -70,7 +70,7 @@ def call_claude(prompt, system=None, max_tokens=8192):
         "messages": messages,
     }
 
-    response = requests.post(OPENROUTER_API_URL, headers=headers, json=body)
+    response = requests.post(OPENROUTER_API_URL, headers=headers, json=body, timeout=90)
     response.raise_for_status()
     data = response.json()
 
